@@ -6,5 +6,8 @@ This script is a collection of commands mainly used when enumerating a box. It c
 
 For example, if the initial NMAP enum returns port 21, it will automatically attempt an anonymous login. If it finds a HTTP service running on port 80, it'll automatically run Gobuster and Nikito.
 
+Usage: sudo ./simple_enumeration <targetIP>
+Usage: sudo ./simple_enumeration <targetIP, targetIP2, targetIP3, etc etc>
+
 Have fun!
 
