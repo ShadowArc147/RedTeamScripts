@@ -41,6 +41,10 @@ if grep -q "80/tcp" $OUTPUT_DIR/nmap_initial.txt; then
   echo "[*] Running Nikto scan..."
   nikto -h http://$TARGET_IP -output $OUTPUT_DIR/nikto_scan.txt
 
+ # Run FFUF for in-depth fuzzing
+  echo "[*] Running FFUF for deeper fuzzing..."
+  ffuf -u http://$TARGET_IP/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -o $OUTPUT_DIR/ffuf_results.json
+
   # Domain and DNS Enumeration
   echo "[*] Performing DNS and domain enumeration..."
   nslookup $TARGET_IP > $OUTPUT_DIR/nslookup.txt
