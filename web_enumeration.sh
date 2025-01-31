@@ -35,7 +35,7 @@ if grep -q "80/tcp" $OUTPUT_DIR/nmap_initial.txt; then
 
   # Run Gobuster with a larger wordlist
   echo "[*] Running Gobuster with big.txt wordlist..."
-  gobuster dir -u http://$TARGET_IP -w /usr/share/wordlists/dirb/big.txt -o $OUTPUT_DIR/gobuster_big.txt
+  gobuster dir -u http://$TARGET_IP -w /usr/share/wordlists/dirb/big.txt -k -x .txt,.php -o $OUTPUT_DIR/gobuster_big.txt
 
   # Run Nikto for vulnerability scanning
   echo "[*] Running Nikto scan..."
