@@ -1,11 +1,11 @@
 #!/bin/bash
 # Script Name: web_enumeration.sh
-# Description: Enhanced web enumeration script that focuses on HTTP services across multiple ports.
+# Description: Enhanced web enumeration script for user-specified HTTP ports.
 # Author: ShadowArc147
 # Email: tom.csec0@gmail.com
 # Created: 2025-01-31
 # Updated: 2025-02-03
-# Version: 1.1
+# Version: 1.2
 
 echo ""
 echo "WEB ENUMERATION BY SHADOWARC147"
@@ -17,56 +17,37 @@ if [ -z "$1" ]; then
 fi
 
 TARGET_IP=$1
-CUSTOM_PORT=""
-OUTPUT_DIR="http_enum_results_$TARGET_IP"
-mkdir -p $OUTPUT_DIR
+PORT=80  # Default to port 80
 
-# Check if user provided a custom port
+# Parse optional port argument
 while getopts "p:" opt; do
   case ${opt} in
-    p ) CUSTOM_PORT=$OPTARG ;;
+    p ) PORT=$OPTARG ;;
     \? ) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
   esac
 done
 
-echo "Starting enhanced HTTP enumeration for $TARGET_IP..."
+OUTPUT_DIR="http_enum_results_${TARGET_IP}_port${PORT}"
+mkdir -p $OUTPUT_DIR
+
+echo "Starting HTTP enumeration for $TARGET_IP on port $PORT..."
 echo "Results will be saved in $OUTPUT_DIR"
 
 # Run Nmap scan
-echo "[*] Running Nmap scan to detect services..."
-nmap -sV -sC -oN $OUTPUT_DIR/nmap_initial.txt $TARGET_IP
+echo "[*] Running Nmap scan..."
+nmap -sV -sC -p $PORT -oN $OUTPUT_DIR/nmap_scan.txt $TARGET_IP
 
-# Extract all open ports with HTTP services
-HTTP_PORTS=$(grep -E "http" $OUTPUT_DIR/nmap_initial.txt | awk -F '/' '{print $1}' | tr '\n' ' ')
+# Run Gobuster with a larger wordlist
+echo "[*] Running Gobuster..."
+gobuster dir -u http://$TARGET_IP:$PORT -w /usr/share/wordlists/dirb/big.txt -k -x .txt,.php -o $OUTPUT_DIR/gobuster.txt
 
-# Include user-specified port if provided
-if [[ -n "$CUSTOM_PORT" ]]; then
-  HTTP_PORTS+=" $CUSTOM_PORT"
-fi
+# Run Nikto for vulnerability scanning
+echo "[*] Running Nikto..."
+nikto -h http://$TARGET_IP:$PORT -output $OUTPUT_DIR/nikto_scan.txt
 
-if [[ -z "$HTTP_PORTS" ]]; then
-  echo "[*] No HTTP services found. Skipping enumeration."
-  exit 0
-fi
-
-echo "[*] Found HTTP services on ports: $HTTP_PORTS"
-
-# Enumerate each detected HTTP service
-for PORT in $HTTP_PORTS; do
-  echo "[*] Enumerating HTTP service on port $PORT..."
-  
-  # Run Gobuster with a larger wordlist
-  echo "[*] Running Gobuster..."
-  gobuster dir -u http://$TARGET_IP:$PORT -w /usr/share/wordlists/dirb/big.txt -k -x .txt,.php -o $OUTPUT_DIR/gobuster_${PORT}.txt
-
-  # Run Nikto for vulnerability scanning
-  echo "[*] Running Nikto..."
-  nikto -h http://$TARGET_IP:$PORT -output $OUTPUT_DIR/nikto_${PORT}.txt
-
-  # Run FFUF for fuzzing
-  echo "[*] Running FFUF..."
-  ffuf -u http://$TARGET_IP:$PORT/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -o $OUTPUT_DIR/ffuf_${PORT}.json
-done
+# Run FFUF for fuzzing
+echo "[*] Running FFUF..."
+ffuf -u http://$TARGET_IP:$PORT/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -o $OUTPUT_DIR/ffuf_results.json
 
 # Domain and DNS Enumeration
 echo "[*] Performing DNS and domain enumeration..."
