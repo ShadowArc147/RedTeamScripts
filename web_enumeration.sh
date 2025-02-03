@@ -1,11 +1,11 @@
 #!/bin/bash
 # Script Name: web_enumeration.sh
-# Description: Enhanced web enumeration script for user-specified HTTP ports.
+# Description: Web enumeration script for user-specified HTTP ports.
 # Author: ShadowArc147
 # Email: tom.csec0@gmail.com
 # Created: 2025-01-31
 # Updated: 2025-02-03
-# Version: 1.2
+# Version: 1.3
 
 echo ""
 echo "WEB ENUMERATION BY SHADOWARC147"
@@ -17,7 +17,7 @@ if [ -z "$1" ]; then
 fi
 
 TARGET_IP=$1
-PORT=80  # Default to port 80
+PORT=""
 
 # Parse optional port argument
 while getopts "p:" opt; do
@@ -27,15 +27,17 @@ while getopts "p:" opt; do
   esac
 done
 
+# If no port is specified, default to 80
+if [ -z "$PORT" ]; then
+  PORT=80
+  echo "[*] No port specified. Defaulting to port 80."
+fi
+
 OUTPUT_DIR="http_enum_results_${TARGET_IP}_port${PORT}"
 mkdir -p $OUTPUT_DIR
 
 echo "Starting HTTP enumeration for $TARGET_IP on port $PORT..."
 echo "Results will be saved in $OUTPUT_DIR"
-
-# Run Nmap scan
-echo "[*] Running Nmap scan..."
-nmap -sV -sC -p $PORT -oN $OUTPUT_DIR/nmap_scan.txt $TARGET_IP
 
 # Run Gobuster with a larger wordlist
 echo "[*] Running Gobuster..."
