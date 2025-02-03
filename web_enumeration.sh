@@ -5,27 +5,40 @@
 # Email: tom.csec0@gmail.com
 # Created: 2025-01-31
 # Updated: 2025-02-03
-# Version: 1.3
+# Version: 1.4
 
 echo ""
 echo "WEB ENUMERATION BY SHADOWARC147"
 echo ""
 
+# Ensure an IP address is provided
 if [ -z "$1" ]; then
   echo "Usage: $0 <IP-ADDRESS> [-p <PORT>]"
   exit 1
 fi
 
-TARGET_IP=$1
+TARGET_IP=""
 PORT=""
 
-# Parse optional port argument
-while getopts "p:" opt; do
-  case ${opt} in
-    p ) PORT=$OPTARG ;;
-    \? ) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
+# Parse arguments manually to handle IP as first positional argument
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -p) 
+      shift
+      PORT=$1
+      ;;
+    *)
+      TARGET_IP=$1
+      ;;
   esac
+  shift
 done
+
+# Ensure the IP address is set
+if [ -z "$TARGET_IP" ]; then
+  echo "Error: No target IP specified."
+  exit 1
+fi
 
 # If no port is specified, default to 80
 if [ -z "$PORT" ]; then
