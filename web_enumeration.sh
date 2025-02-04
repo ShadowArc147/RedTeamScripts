@@ -60,9 +60,9 @@ gobuster dir -u http://$TARGET_IP:$PORT -w /usr/share/wordlists/dirb/big.txt -k 
 echo "[*] Running Nikto..."
 nikto -h http://$TARGET_IP:$PORT -output $OUTPUT_DIR/nikto_scan.txt
 
-# Run FFUF for fuzzing
+# Run FFUF for fuzzing DNS Discovery
 echo "[*] Running FFUF..."
-ffuf -u http://$TARGET_IP:$PORT/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -o $OUTPUT_DIR/ffuf_results.json
+ffuf -u http://$TARGET_IP:$PORT/FUZZ -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000 -o $OUTPUT_DIR/ffuf_results.json
 
 # Domain and DNS Enumeration
 echo "[*] Performing DNS and domain enumeration..."
