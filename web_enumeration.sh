@@ -88,15 +88,39 @@ if [ "$RUN_NIKTO" = true ] || [ "$RUN_ALL" = true ]; then
 
     # Check if .git is found in Nikto results
     if grep -iq "\.git" $OUTPUT_DIR/nikto_scan.txt; then
-        echo "[*] .git directory found in Nikto scan. Attempting to run git-dumper..."
+        echo "[*] .git directory found in Nikto scan. Attempting to dump the Git repository..."
 
-        # Run git-dumper if .git directory is found
-        git-dumper http://$TARGET:$PORT/.git $OUTPUT_DIR/gitdump/
+        # Create a directory for the git dump
+        mkdir -p gitdump
+
+        # Download git-dumper.sh and make it executable
+        echo "[*] Downloading gitdumper.sh..."
+        wget -q https://raw.githubusercontent.com/internetwache/GitTools/master/Dumper/gitdumper.sh -O gitdumper.sh
+        chmod +x gitdumper.sh
+
+        # Run git-dumper.sh to dump the .git directory
+        echo "[*] Running gitdumper.sh..."
+        ./gitdumper.sh http://$TARGET:$PORT/.git/ ./gitdump/
 
         if [ $? -eq 0 ]; then
-            echo "[*] git-dumper successfully dumped the .git directory to $OUTPUT_DIR/gitdump/"
+            echo "[*] git-dumper successfully dumped the .git directory to ./gitdump/"
         else
             echo "[!] git-dumper failed to dump the .git directory."
+        fi
+
+        # Download extractor.sh and make it executable
+        echo "[*] Downloading extractor.sh..."
+        wget -q https://raw.githubusercontent.com/internetwache/GitTools/master/Extractor/extractor.sh -O extractor.sh
+        chmod +x extractor.sh
+
+        # Run extractor.sh to extract the project
+        echo "[*] Running extractor.sh..."
+        ./extractor.sh ./gitdump/ ./extracted_project/
+
+        if [ $? -eq 0 ]; then
+            echo "[*] Git repository successfully extracted to ./extracted_project/"
+        else
+            echo "[!] Extractor script failed."
         fi
     fi
 fi
@@ -107,7 +131,7 @@ if [ "$RUN_FFUF" = true ] || [ "$RUN_ALL" = true ]; then
     ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt \
         -u "http://$HOSTNAME/" -H "Host: FUZZ.$HOSTNAME" -fw 105 \
         -o $OUTPUT_DIR/ffuf_results.json
-    
+fi
 
 # Run Sublist3r if enabled or all tools are selected
 if [ "$RUN_SUBLIST3R" = true ] || [ "$RUN_ALL" = true ]; then
@@ -130,3 +154,4 @@ if [ "$RUN_AMASS" = true ] || [ "$RUN_ALL" = true ]; then
 fi
 
 echo "Enumeration complete. Check the $OUTPUT_DIR directory for results."
+
