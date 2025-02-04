@@ -62,7 +62,7 @@ nikto -h http://$TARGET_IP:$PORT -output $OUTPUT_DIR/nikto_scan.txt
 
 # Run FFUF for fuzzing DNS Discovery
 echo "[*] Running FFUF..."
-ffuf -u http://$TARGET_IP:$PORT/FUZZ -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000 -o $OUTPUT_DIR/ffuf_results.json
+ffuf -k -c -u http://$TARGET_IP:$PORT -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt -f>
 
 # Domain and DNS Enumeration
 echo "[*] Performing DNS and domain enumeration..."
