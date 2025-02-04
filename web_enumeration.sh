@@ -6,7 +6,7 @@
 # Email: tom.csec0@gmail.com
 # Created: 2025-01-31
 # Updated: 2025-02-04
-# Version: 1.6
+# Version: 1.8
 
 echo ""
 echo "WEB ENUMERATION BY SHADOWARC147"
@@ -85,6 +85,20 @@ fi
 if [ "$RUN_NIKTO" = true ] || [ "$RUN_ALL" = true ]; then
     echo "[*] Running Nikto..."
     nikto -h http://$TARGET:$PORT -output $OUTPUT_DIR/nikto_scan.txt
+
+    # Check if .git is found in Nikto results
+    if grep -iq "\.git" $OUTPUT_DIR/nikto_scan.txt; then
+        echo "[*] .git directory found in Nikto scan. Attempting to run git-dumper..."
+
+        # Run git-dumper if .git directory is found
+        git-dumper http://$TARGET:$PORT/.git $OUTPUT_DIR/gitdump/
+
+        if [ $? -eq 0 ]; then
+            echo "[*] git-dumper successfully dumped the .git directory to $OUTPUT_DIR/gitdump/"
+        else
+            echo "[!] git-dumper failed to dump the .git directory."
+        fi
+    fi
 fi
 
 # Run FFUF if enabled or all tools are selected
@@ -93,7 +107,7 @@ if [ "$RUN_FFUF" = true ] || [ "$RUN_ALL" = true ]; then
     ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt \
         -u "http://$HOSTNAME/" -H "Host: FUZZ.$HOSTNAME" -fw 105 \
         -o $OUTPUT_DIR/ffuf_results.json
-fi
+    
 
 # Run Sublist3r if enabled or all tools are selected
 if [ "$RUN_SUBLIST3R" = true ] || [ "$RUN_ALL" = true ]; then
