@@ -91,7 +91,7 @@ fi
 if [ "$RUN_FFUF" = true ] || [ "$RUN_ALL" = true ]; then
     echo "[*] Running FFUF..."
     ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt \
-        -u "http://$HOSTNAME/" -H "Host: FUZZ.$HOSTNAME" -fw 104 \
+        -u "http://$HOSTNAME/" -H "Host: FUZZ.$HOSTNAME" -fw 105 \
         -o $OUTPUT_DIR/ffuf_results.json
 fi
 
