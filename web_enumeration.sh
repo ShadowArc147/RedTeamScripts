@@ -1,93 +1,118 @@
 #!/bin/bash
+
 # Script Name: web_enumeration.sh
-# Description: Web enumeration script for user-specified HTTP ports.
+# Description: Web enumeration script with optional tool selection.
 # Author: ShadowArc147
 # Email: tom.csec0@gmail.com
 # Created: 2025-01-31
-# Updated: 2025-02-03
-# Version: 1.4
+# Updated: 2025-02-04
+# Version: 1.6
 
 echo ""
 echo "WEB ENUMERATION BY SHADOWARC147"
 echo ""
 
-# Ensure an IP address is provided
+# Ensure a target is provided
 if [ -z "$1" ]; then
-  echo "Usage: $0 <IP-ADDRESS> [-p <PORT>]"
-  exit 1
+    echo "Usage: $0 <IP-ADDRESS or HOSTNAME> [-p <PORT>] [-g] [-n] [-f] [-s] [-a]"
+    exit 1
 fi
 
-TARGET_IP=""
+TARGET=""
 PORT=""
+RUN_GOBUSTER=false
+RUN_NIKTO=false
+RUN_FFUF=false
+RUN_SUBLIST3R=false
+RUN_AMASS=false
+RUN_ALL=true
 
-# Parse arguments manually to handle IP as first positional argument
+# Parse arguments manually to handle target as first positional argument
 while [[ $# -gt 0 ]]; do
-  case "$1" in
-    -p) 
-      shift
-      PORT=$1
-      ;;
-    *)
-      TARGET_IP=$1
-      ;;
-  esac
-  shift
+    case "$1" in
+        -p) shift; PORT=$1 ;;
+        -g) RUN_GOBUSTER=true; RUN_ALL=false ;;
+        -n) RUN_NIKTO=true; RUN_ALL=false ;;
+        -f) RUN_FFUF=true; RUN_ALL=false ;;
+        -s) RUN_SUBLIST3R=true; RUN_ALL=false ;;
+        -a) RUN_AMASS=true; RUN_ALL=false ;;
+        *) TARGET=$1 ;;
+    esac
+    shift
 done
 
-# Ensure the IP address is set
-if [ -z "$TARGET_IP" ]; then
-  echo "Error: No target IP specified."
-  exit 1
+# Ensure a target is set
+if [ -z "$TARGET" ]; then
+    echo "Error: No target specified."
+    exit 1
 fi
 
 # If no port is specified, default to 80
 if [ -z "$PORT" ]; then
-  PORT=80
-  echo "[*] No port specified. Defaulting to port 80."
+    PORT=80
+    echo "[*] No port specified. Defaulting to port 80."
 fi
 
-OUTPUT_DIR="http_enum_results_${TARGET_IP}_port${PORT}"
+# Determine if target is an IP or a domain
+if [[ "$TARGET" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "[*] Target appears to be an IP address. Attempting hostname resolution..."
+    HOSTNAME=$(nslookup $TARGET | awk '/name =/ {print $4}' | sed 's/\.$//')
+
+    if [ -z "$HOSTNAME" ]; then
+        echo "[!] No hostname found for $TARGET. Using the IP directly."
+        HOSTNAME=$TARGET
+    else
+        echo "[*] Resolved hostname: $HOSTNAME"
+    fi
+else
+    echo "[*] Target appears to be a hostname."
+    HOSTNAME=$TARGET
+fi
+
+OUTPUT_DIR="http_enum_results_${TARGET}_port${PORT}"
 mkdir -p $OUTPUT_DIR
 
-echo "Starting HTTP enumeration for $TARGET_IP on port $PORT..."
+echo "Starting HTTP enumeration for $TARGET on port $PORT..."
 echo "Results will be saved in $OUTPUT_DIR"
 
-# Run Gobuster with a larger wordlist
-echo "[*] Running Gobuster..."
-gobuster dir -u http://$TARGET_IP:$PORT -w /usr/share/wordlists/dirb/big.txt -k -x .txt,.php -o $OUTPUT_DIR/gobuster.txt
-
-# Run Nikto for vulnerability scanning
-echo "[*] Running Nikto..."
-nikto -h http://$TARGET_IP:$PORT -output $OUTPUT_DIR/nikto_scan.txt
-
-# Extract the hostname from the IP
-hostname=$(nslookup $TARGET_IP | awk '/name =/ {print $4}' | sed 's/\.$//')
-
-if [ -z "$hostname" ]; then
-  echo "[!] No hostname found for $TARGET_IP. Using the IP directly."
-  hostname=$TARGET_IP
+# Run Gobuster if enabled or all tools are selected
+if [ "$RUN_GOBUSTER" = true ] || [ "$RUN_ALL" = true ]; then
+    echo "[*] Running Gobuster..."
+    gobuster dir -u http://$TARGET:$PORT -w /usr/share/wordlists/dirb/big.txt -k -x .txt,.php -o $OUTPUT_DIR/gobuster.txt
 fi
 
-# Run FFUF with Host Header fuzzing
-echo "[*] Running FFUF..."
-ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt \
-    -u "http://$hostname/" -H "Host: FUZZ.$hostname" -fw 104 \
-    -o $OUTPUT_DIR/ffuf_results.json
+# Run Nikto if enabled or all tools are selected
+if [ "$RUN_NIKTO" = true ] || [ "$RUN_ALL" = true ]; then
+    echo "[*] Running Nikto..."
+    nikto -h http://$TARGET:$PORT -output $OUTPUT_DIR/nikto_scan.txt
+fi
 
-# Domain and DNS Enumeration
-echo "[*] Performing DNS and domain enumeration..."
-nslookup $TARGET_IP > $OUTPUT_DIR/nslookup.txt
-dig $TARGET_IP ANY > $OUTPUT_DIR/dig_results.txt
+# Run FFUF if enabled or all tools are selected
+if [ "$RUN_FFUF" = true ] || [ "$RUN_ALL" = true ]; then
+    echo "[*] Running FFUF..."
+    ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt \
+        -u "http://$HOSTNAME/" -H "Host: FUZZ.$HOSTNAME" -fw 104 \
+        -o $OUTPUT_DIR/ffuf_results.json
+fi
 
-# Check for Subdomain Enumeration tools
-if command -v sublist3r &> /dev/null; then
-  echo "[*] Running Sublist3r..."
-  sublist3r -d $TARGET_IP -o $OUTPUT_DIR/subdomains.txt
-elif command -v amass &> /dev/null; then
-  echo "[*] Running Amass..."
-  amass enum -d $TARGET_IP -o $OUTPUT_DIR/subdomains.txt
-else
-  echo "[*] No subdomain enumeration tools found (Sublist3r/Amass). Skipping..."
+# Run Sublist3r if enabled or all tools are selected
+if [ "$RUN_SUBLIST3R" = true ] || [ "$RUN_ALL" = true ]; then
+    if command -v sublist3r &> /dev/null; then
+        echo "[*] Running Sublist3r..."
+        sublist3r -d $HOSTNAME -o $OUTPUT_DIR/subdomains.txt
+    else
+        echo "[*] Sublist3r not found. Skipping..."
+    fi
+fi
+
+# Run Amass if enabled or all tools are selected
+if [ "$RUN_AMASS" = true ] || [ "$RUN_ALL" = true ]; then
+    if command -v amass &> /dev/null; then
+        echo "[*] Running Amass..."
+        amass enum -d $HOSTNAME -o $OUTPUT_DIR/subdomains.txt
+    else
+        echo "[*] Amass not found. Skipping..."
+    fi
 fi
 
 echo "Enumeration complete. Check the $OUTPUT_DIR directory for results."
