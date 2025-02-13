@@ -78,7 +78,21 @@ echo "Results will be saved in $OUTPUT_DIR"
 # Run Gobuster if enabled or all tools are selected
 if [ "$RUN_GOBUSTER" = true ] || [ "$RUN_ALL" = true ]; then
     echo "[*] Running Gobuster..."
-    gobuster dir -u http://$TARGET:$PORT -w /usr/share/wordlists/dirb/big.txt -k -x .txt,.php -o $OUTPUT_DIR/gobuster.txt
+    #gobuster dir -u http://$TARGET:$PORT -w /usr/share/wordlists/dirb/big.txt -k -x .txt,.php,.zip -o $OUTPUT_DIR/gobuster.txt
+    gobuster dir -u http://$TARGET:$PORT \
+    -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt \
+    -k \
+    x .txt,.php,.zip,.html,.asp,.aspx,.jsp,.json,.xml,.log,.bak,.tar,.gz,.sql,.config,.ini \
+    --wildcard \
+    --timeout 10s \
+    --exclude-status 404,403 \
+    --append-domain \
+    --recursive \
+    --depth 5 \
+    -o $OUTPUT_DIR/gobuster_recursive.txt
+
+    gobuster dns -d $TARGET -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-5000.txt -o $OUTPUT_DIR/gobuster_subdomains.txt
+
 fi
 
 # Run Nikto if enabled or all tools are selected
@@ -125,13 +139,19 @@ if [ "$RUN_NIKTO" = true ] || [ "$RUN_ALL" = true ]; then
     fi
 fi
 
-# Run FFUF if enabled or all tools are selected
-if [ "$RUN_FFUF" = true ] || [ "$RUN_ALL" = true ]; then
-    echo "[*] Running FFUF..."
-    ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt \
-        -u "http://$HOSTNAME/" -H "Host: FUZZ.$HOSTNAME" -fw 105 \
-        -o $OUTPUT_DIR/ffuf_results.json
-fi
+# Run FFUF without filtering to determine the most common 'Words' value
+echo "[*] Running FFUF initial scan to determine wf value..."
+ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt \
+    -u "http://$HOSTNAME/" -H "Host: FUZZ.$HOSTNAME" -o $OUTPUT_DIR/ffuf_initial.json
+
+WF_VALUE=$(jq -r '.results[].words' $OUTPUT_DIR/ffuf_initial.json | sort | uniq -c | sort -nr | head -1 | awk '{print $2}')
+echo "[*] Determined wf value: $WF_VALUE"
+
+echo "[*] Running final FFUF scan with wf=$WF_VALUE..."
+ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt \
+    -u "http://$HOSTNAME/" -H "Host: FUZZ.$HOSTNAME" -fw $WF_VALUE \
+    -o $OUTPUT_DIR/ffuf_results.json
+
 
 # Run Sublist3r if enabled or all tools are selected
 if [ "$RUN_SUBLIST3R" = true ] || [ "$RUN_ALL" = true ]; then

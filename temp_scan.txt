@@ -1,0 +1,4 @@
+/.htpasswd            (Status: 403) [Size: 305]
+/.htaccess            (Status: 403) [Size: 305]
+/assets               (Status: 301) [Size: 344] [--> http://192.168.247.247/assets/]
+/aux                  (Status: 403) [Size: 305]
