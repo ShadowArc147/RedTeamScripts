@@ -80,18 +80,16 @@ if [ "$RUN_GOBUSTER" = true ] || [ "$RUN_ALL" = true ]; then
     echo "[*] Running Gobuster..."
     #gobuster dir -u http://$TARGET:$PORT -w /usr/share/wordlists/dirb/big.txt -k -x .txt,.php,.zip -o $OUTPUT_DIR/gobuster.txt
     gobuster dir -u http://$TARGET:$PORT \
-    -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt \
+    -w /usr/share/wordlists/dirb/big.txt \
     -k \
     x .txt,.php,.zip,.html,.asp,.aspx,.jsp,.json,.xml,.log,.bak,.tar,.gz,.sql,.config,.ini \
-    --wildcard \
-    --timeout 10s \
-    --exclude-status 404,403 \
-    --append-domain \
-    --recursive \
-    --depth 5 \
+    -wildcard \
+    -timeout 10s \
+    -exclude-status 404,403 \
+    -append-domain \
+    -recursive \
+    -depth 5 \
     -o $OUTPUT_DIR/gobuster_recursive.txt
-
-    gobuster dns -d $TARGET -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-5000.txt -o $OUTPUT_DIR/gobuster_subdomains.txt
 
 fi
 
@@ -147,21 +145,11 @@ ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million
 WF_VALUE=$(jq -r '.results[].words' $OUTPUT_DIR/ffuf_initial.json | sort | uniq -c | sort -nr | head -1 | awk '{print $2}')
 echo "[*] Determined wf value: $WF_VALUE"
 
-echo "[*] Running final FFUF scan with wf=$WF_VALUE..."
+echo "[*] Running final FFUF scan with fw=$FW_VALUE..."
 ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt \
-    -u "http://$HOSTNAME/" -H "Host: FUZZ.$HOSTNAME" -fw $WF_VALUE \
+    -u "http://$HOSTNAME/" -H "Host: FUZZ.$HOSTNAME" -fw $FW_VALUE \
     -o $OUTPUT_DIR/ffuf_results.json
 
-
-# Run Sublist3r if enabled or all tools are selected
-if [ "$RUN_SUBLIST3R" = true ] || [ "$RUN_ALL" = true ]; then
-    if command -v sublist3r &> /dev/null; then
-        echo "[*] Running Sublist3r..."
-        sublist3r -d $HOSTNAME -o $OUTPUT_DIR/subdomains.txt
-    else
-        echo "[*] Sublist3r not found. Skipping..."
-    fi
-fi
 
 # Run Amass if enabled or all tools are selected
 if [ "$RUN_AMASS" = true ] || [ "$RUN_ALL" = true ]; then
