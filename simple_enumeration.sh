@@ -41,7 +41,7 @@ echo "[*] Running full TCP port scan with Nmap..."
 nmap -p- -oN $OUTPUT_DIR/nmap_full_tcp.txt $TARGET_IP
 
 echo "[*] Running Nmap UDP scan (this may take a while)..."
-nmap -sU -sC --top-ports 100 -oN $OUTPUT_DIR/nmap_udp.txt $TARGET_IP
+nmap -sU -sC -p- -oN $OUTPUT_DIR/nmap_udp.txt $TARGET_IP
 #nmap -sU -p- -sC -sV --min-rate=500 --max-retries=3 --open -oN $OUTPUT_DIR/nmap_udp_full.txt $TARGET_IP
 
 
