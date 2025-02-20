@@ -98,6 +98,37 @@ fi
 if [ "$RUN_NIKTO" = true ] || [ "$RUN_ALL" = true ]; then
     echo "[*] Running Nikto..."
     nikto -h http://$TARGET:$PORT -output $OUTPUT_DIR/nikto_scan.txt
+
+     # Check if .git is found in Nikto results
+    if grep -iq "\.git" $OUTPUT_DIR/nikto_scan.txt; then
+    echo "[*] .git directory found in Nikto scan. Attempting to dump the Git repository..."
+    # Create a directory for the git dump
+        mkdir -p gitdump
+        # Download git-dumper.sh and make it executable
+        echo "[*] Downloading gitdumper.sh..."
+        wget -q https://raw.githubusercontent.com/internetwache/GitTools/master/Dumper/gitdumper.sh -O gitdumper.sh
+        chmod +x gitdumper.sh
+        # Run git-dumper.sh to dump the .git directory
+        echo "[*] Running gitdumper.sh..."
+        ./gitdumper.sh http://$TARGET:$PORT/.git/ ./gitdump/
+        if [ $? -eq 0 ]; then
+          echo "[*] git-dumper successfully dumped the .git directory to ./gitdump/"
+          else
+            echo "[!] git-dumper failed to dump the .git directory."
+        fi
+        # Download extractor.sh and make it executable
+        echo "[*] Downloading extractor.sh..."
+        wget -q https://raw.githubusercontent.com/internetwache/GitTools/master/Extractor/extractor.sh -O extractor.sh
+        chmod +x extractor.sh
+        # Run extractor.sh to extract the project
+        echo "[*] Running extractor.sh..."
+        ./extractor.sh ./gitdump/ ./extracted_project/
+        if [ $? -eq 0 ]; then
+            echo "[*] Git repository successfully extracted to ./extracted_project/"
+        else
+            echo "[!] Extractor script failed."
+        fi
+    fi
 fi
 
 # Run FFUF without filtering to determine the most common 'Words' value
@@ -107,11 +138,6 @@ ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million
 
 WF_VALUE=$(jq -r '.results[].words' $OUTPUT_DIR/ffuf_initial.json | sort | uniq -c | sort -nr | head -1 | awk '{print $2}')
 echo "[*] Determined wf value: $WF_VALUE"
-
-echo "[*] Running final FFUF scan with fw=$WF_VALUE..."
-ffuf -k -c -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt \
-    -u "http://$HOSTNAME/" -H "Host: FUZZ.$HOSTNAME" -fw $WF_VALUE \
-    -o $OUTPUT_DIR/ffuf_results.json
 
 # Run Amass if enabled or all tools are selected
 if [ "$RUN_AMASS" = true ] || [ "$RUN_ALL" = true ]; then

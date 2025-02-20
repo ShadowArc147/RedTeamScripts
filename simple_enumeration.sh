@@ -33,6 +33,9 @@ echo "Starting enumeration for $TARGET_IP..."
 echo "Results will be saved in $OUTPUT_DIR"
 echo
 
+# Run an aggressive scan
+nmap -A -Pn $OUTPUT_DIR/nmap_initial.txt $TARGET_IP
+
 # Run Nmap scans
 echo "[*] Running initial Nmap scan..."
 nmap -sV -sC -oN $OUTPUT_DIR/nmap_initial.txt $TARGET_IP
